@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Any, Dict, Iterator, List, Optional, Type, Union
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Type, Union
 
 from enum import Enum, auto
 
@@ -65,6 +65,14 @@ class Error(Enum):
         return self.name
 
 
+class NoSuchEntity(Exception):
+    pass
+
+
+class NoSuchComponent(Exception):
+    pass
+
+
 class Entity:
     def __init__(self, id):
         self.__id = id
@@ -84,9 +92,6 @@ class InternalEntity:
         self.entity: Entity = entity
         self.components: dict[Type, Any] = {}
 
-    
-
-
 
 """
 Naming Guide for if you want to shorten a variable in a comprehension:
@@ -97,12 +102,13 @@ c = component
 cs = components
 """
 
+
 class World:
     def __init__(self) -> None:
         self.next_entity_id: int = 0
         self.entities: Dict[InternalEntity] = {}
 
-    def spawn(self, components: List[Any]) -> Entity:
+    def spawn(self, *components: Tuple[Any, ...]) -> Entity:
         entity = Entity(self.next_entity_id)
         self.next_entity_id += 1
         internal_entity = InternalEntity(entity)
@@ -111,7 +117,7 @@ class World:
             internal_entity.components[type(component)] = component
         return entity
 
-    def spawn_at(self, entity: Entity, components: List[Any]) -> None:
+    def spawn_at(self, entity: Entity, *components: Tuple[Any, ...]) -> None:
         internal_entity = InternalEntity(entity)
         self.entities[entity] = internal_entity
         for component in components:
@@ -129,16 +135,22 @@ class World:
     def contains(self, entity: Entity) -> bool:
         return entity in self.entities
 
-    def query(
+    def find(
         self,
-        component_type_or_types: Type | List[Type],
-        has: Optional[Type | List[Type]] = None,
-        without: Optional[Type | List[Type]] = None,
+        *component_types: Tuple[Type, ...],
+        has: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+        without: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
     ) -> Iterator[tuple]:
-        # Normalize input parameters to lists
-        component_types = component_type_or_types if isinstance(component_type_or_types, list) else [component_type_or_types]
-        has = has if isinstance(has, list) else [has] if has is not None else None
-        without = without if isinstance(without, list) else [without] if without is not None else None
+        has = (
+            has
+            if isinstance(has, (list, tuple))
+            else [has] if has is not None else None
+        )
+        without = (
+            without
+            if isinstance(without, (list, tuple))
+            else [without] if without is not None else None
+        )
 
         for internal_entity in self.entities.values():
             if has and not all(c in internal_entity.components for c in has):
@@ -150,20 +162,19 @@ class World:
                     internal_entity.components[c] for c in component_types
                 )
 
-                
-    def query_one(
+    def find_on(
         self,
         entity: Entity,
-        component_type_or_types: Type | List[Type],
-        has: Optional[Type | List[Type]] = None,
-        without: Optional[Type | List[Type]] = None,
+        *component_types: Tuple[Type, ...],
+        has: Optional[Type | List[Type] | Tuple[Type, ...]] = None,
+        without: Optional[Type | List[Type] | Tuple[Type, ...]] = None,
     ) -> Optional[tuple]:
         if entity not in self.entities:
             return None
         internal_entity = self.entities[entity]
 
         if has:
-            if isinstance(has, list):
+            if isinstance(has, (list, tuple)):
                 if not all(c in internal_entity.components for c in has):
                     return None
             else:
@@ -171,61 +182,61 @@ class World:
                     return None
 
         if without:
-            if isinstance(without, list):
+            if isinstance(without, (list, tuple)):
                 if any(c in internal_entity.components for c in without):
                     return None
             else:
                 if without in internal_entity.components:
                     return None
 
-        if isinstance(component_type_or_types, list):
-            component_types = component_type_or_types
-            if all(c in internal_entity.components for c in component_types):
-                return (internal_entity.entity, tuple(internal_entity.components[c] for c in component_types))
-        else:
-            component_type = component_type_or_types
-            if component_type in internal_entity.components:
-                return (internal_entity.entity, internal_entity.components[component_type])
+        if all(c in internal_entity.components for c in component_types):
+            return (
+                internal_entity.entity,
+                tuple(internal_entity.components[c] for c in component_types),
+            )
 
         return None
 
-
-    def get(self, entity: Entity, component_type: Type) -> Any | Error.NoSuchEntity | Error.NoSuchComponent:
+    def get(self, entity: Entity, component_type: Type) -> Any | None:
         if entity in self.entities:
             if component_type in self.entities[entity].components:
                 return self.entities[entity].components[component_type]
-            else:
-                return Error.NoSuchComponent
-        else:
-            return Error.NoSuchEntity
+        return None
 
-    def satisfies(self, entity: Entity,
-            has: Optional[Type | List[Type]] = None,
-            without: Optional[Type | List[Type]] = None) -> bool:
+    def satisfies(
+        self,
+        entity: Entity,
+        has: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+        without: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+    ) -> bool:
         if entity not in self.entities:
             return False
         internal_entity = self.entities[entity]
 
         if has:
-            if isinstance(has, list):
+            if isinstance(has, (list, tuple)):
                 if not all(c in internal_entity.components for c in has):
                     return False
             else:
                 if has not in internal_entity.components:
                     return False
-                
+
         if without:
-            if isinstance(without, list):
+            if isinstance(without, (list, tuple)):
                 if any(c in internal_entity.components for c in without):
                     return False
             else:
                 if without in internal_entity.components:
                     return False
-                
+
         return True
 
+    def iter(self):
+        for entity in self.entities.keys():
+            yield entity
+
     def insert(
-        self, entity: Entity, components: List[Any]
+        self, entity: Entity, *components: Tuple[Any, ...]
     ) -> None | Error.NoSuchEntity:
         if entity in self.entities:
             for component in components:
@@ -233,42 +244,19 @@ class World:
         else:
             return Error.NoSuchEntity
 
-    def insert_one(self, entity: Entity, component: Any) -> None | Error.NoSuchEntity:
+    def remove(self, entity: Entity, *component_types: Tuple[Any, ...]) -> None:
         if entity in self.entities:
-            self.entities[entity].components[type(component)] = component
-        else:
-            return Error.NoSuchEntity
-
-    def remove(self, entity: Entity, component_types: List[Type]) -> None:
-
-    def remove_one(self, entity: Entity, component_type: Type) -> None:
-        for internal_entity in self.entities:
-            if internal_entity.entity == entity:
+            internal_entity = self.entities[entity]
+            for component_type in component_types:
                 if component_type in internal_entity.components:
                     del internal_entity.components[component_type]
-                break
-
-
-
-
-    def contains(self, entity: Entity) -> bool:
-        for internal_entity in self.entities:
-            if internal_entity.entity == entity:
-                return True
-        return False
-
-    def satisfies(self, entity: Entity, components: List[Type]) -> bool:
-        for internal_entity in self.entities:
-            if internal_entity.entity == entity:
-                return all([c in internal_entity.components for c in components])
-        return False
 
     def take(self, entity: Entity) -> tuple:
-        for internal_entity in self.entities:
-            if internal_entity.entity == entity:
-                components = tuple(internal_entity.components.values())
-                self.despawn(entity)
-                return components
+        if entity in self.entities:
+            internal_entity = self.entities[entity]
+            components = tuple(internal_entity.components.values())
+            self.despawn(entity)
+            return components
         return tuple()
 
     def iter(self) -> Iterator[Entity]:
