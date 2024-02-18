@@ -1,0 +1,5 @@
+numpy==1.26.3
+pillow==10.2.0
+simpleaudio==1.0.4
+Wave==0.0.2
+small-ass-cache==0.9.0
