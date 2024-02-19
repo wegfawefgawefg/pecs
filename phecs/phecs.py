@@ -58,7 +58,7 @@ class World:
         self.next_entity_id: int = 0
         self.entities: Dict[Entity, InternalEntity] = {}
 
-    def spawn(self, *components: Tuple[Any, ...]) -> Entity:
+    def spawn(self, *components: Any) -> Entity:
         entity = Entity(self.next_entity_id)
         self.next_entity_id += 1
         internal_entity = InternalEntity(entity)
@@ -67,7 +67,7 @@ class World:
             internal_entity.components[type(component)] = component
         return entity
 
-    def spawn_at(self, entity: Entity, *components: Tuple[Any, ...]) -> None:
+    def spawn_at(self, entity: Entity, *components: Any) -> None:
         internal_entity = InternalEntity(entity)
         self.entities[entity] = internal_entity
         for component in components:
@@ -184,14 +184,14 @@ class World:
 
         return True
 
-    def insert(self, entity: Entity, *components: Tuple[Any, ...]) -> None | Error:
+    def insert(self, entity: Entity, *components: Any) -> None | Error:
         if entity in self.entities:
             for component in components:
                 self.entities[entity].components[type(component)] = component
         else:
             return Error.NoSuchEntity
 
-    def remove(self, entity: Entity, *component_types: Tuple[Any, ...]) -> None:
+    def remove(self, entity: Entity, *component_types: Type) -> None:
         if entity in self.entities:
             internal_entity = self.entities[entity]
             for component_type in component_types:
