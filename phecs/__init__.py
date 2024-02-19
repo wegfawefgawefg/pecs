@@ -1,1 +1,1 @@
-from . import phecs
+from .phecs import World, Entity
