@@ -1,1 +1,1 @@
-from .phecs import phecs
+from . import phecs
