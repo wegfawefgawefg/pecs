@@ -52,10 +52,7 @@ Has the following advantages:
 2. Import
 
    ```python
-   from phecs import {
-       World,
-       Entity
-   }
+   from phecs import World, Entity
    ```
 
 ### 1. Define Components
