@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Type
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Type
 
 
 class Error(Enum):
@@ -87,7 +87,7 @@ class World:
 
     def find(
         self,
-        *component_types: Tuple[Type, ...],
+        *component_types: Type,
         has: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
         without: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
     ) -> Iterator[Tuple[Entity, Tuple[Any, ...]]]:
@@ -120,7 +120,7 @@ class World:
     def find_on(
         self,
         entity: Entity,
-        *component_types: Tuple[Type, ...],
+        *component_types: Type,
         has: Optional[Type | List[Type] | Tuple[Type, ...]] = None,
         without: Optional[Type | List[Type] | Tuple[Type, ...]] = None,
     ) -> Optional[tuple[Entity, Tuple[Any, ...]]]:
