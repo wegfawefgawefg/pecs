@@ -3,29 +3,41 @@
 ![Icon](phecs_logo_small.png)
 
 ## What is it?
-PHECS is an ecs with an api like hecs, but for python python-hecs. 
+Phecs is an entity component system with a native python feeling api, and a simple implementation.
+It is inspired by hecs in rust, but for python. python-hecs. phecs. 
 Pronounced 'fecs' as in, what the phecs wrong with you.
 
 ## Why was it made?
 
-Most ECS libraries come with processor or system abstractions, or require some component registration boilerplate. 
-We needed a library that feels like it was made for python. Normal iteration, normal functions as systems.
-HECS, in Rust, does a good job of this, but has some funky query syntax that would look really weird in python.
-This is a near direct port of the api surface of HECS, but with a pythonic api.
+Most ECS libraries sell themselves as being tools for performance.
+Usually this comes at an ergonomic cost. Lots of boilerplate, component type pre-registration, and system abstractions.
+However, as newer libraries came out with clever metaprogramming tricks, the boilerplate was heavily reduced, while still maintaining performance. People migrated to newer libraries, and so the desire for ease-of-use was clearly there.
+In python, however, the ability to write a really performant ecs is limited.
+Despite this, the existing popular ecs libraries are still unusually cumbersome.
+
+If performance is only ever going to be good enough, then there shouldnt be any reason to sacrifice usability.
+The library should be made to feel like it could be at home in the standard library.
+Normal iteration, easily typed function names, no decorators, no type registration, no processor and system schedulers.
+In Rust HECS does a good job of this, but has some funky query syntax that would look really weird in python.
+This is a near direct port of the api surface of HECS, but with a python feel.
 
 ## But why should I use it?
 
 Has the following advantages:
 
-- Lets you declare your assets in the same place as the paths (no more dictionary of mappings).
-- Uses an enum as the base type for your assets (instead of strings). This means your editor will autocomplete your asset names for you.
-- Your editor will autocomplete your asset names for you.
-- Your editor will autocomplete your asset names for you.
-- Your editor will autocomplete your asset names for you.
-- Your editor may also detect asset name typos. (thank you)
-- Has a preload feature to warm the cache.
+- Components are native python objects. No registration, decoration, or inheritance required.
+- Zero boilerplate.
+- No funky function names.
+- Lower learning curve than other ECS libraries.
+- Is fast enough. (100s of entities with 100s of components, 10s of systems, 30% of one 60fps frame.)
+- Is only a couple hundred lines of code. (Hackable, Grokkable, Extendable if needed.)
 - Is already written.
-- Is only like 100 lines of code. (Hackable, Grokkable.)
+- Good for trying out an ECS for the first time.
+
+## Why should I not use it?
+
+- If you need more speed, honestly you should switch to a compiled language.
+
 
 ## How do?
 
