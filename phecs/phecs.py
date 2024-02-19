@@ -1,79 +1,214 @@
-from enum import Enum
-import os
+from __future__ import annotations
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Type, Union
+
+from enum import Enum, auto
 
 
-################    SETTING THE STAGE   ################
-class AssetPath:
-    def __init__(self, base_path):
-        self.base_path = base_path
+class Error(Enum):
+    NoSuchEntity = auto()
+    NoSuchComponent = auto()
 
-    def full_path(self, filename):
-        return os.path.join(
-            self.base_path, filename
-        )  # Using os.path.join for compatibility
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
 
-def loader(load_func, path: str | None = None):
-    def decorator(cls):
-        if not issubclass(cls, Enum):
-            yellow = "\033[93m"  # ANSI escape sequence for yellow
-            blue = "\033[94m"  # ANSI escape sequence for blue
-            green = "\033[92m"  # ANSI escape sequence for green
-            red = "\033[91m"  # ANSI escape sequence for red
-            endc = "\033[0m"  # ANSI escape sequence to end coloring
+class NoSuchEntity(Exception):
+    pass
 
-            error_path = f", path='{path}'" if path else ""
-            error_msg = (
-                f"{red}Your asset class '{cls.__name__}' should derive from Enum.{endc}\n\n"
-                f"{green}Correct usage:{endc}\n\n"
-                f"\t@loader({load_func.__name__}{error_path})\n"
-                f"\t{blue}class{endc} {cls.__name__}({yellow}Enum{endc}): {yellow}<- Make sure to derive from Enum{endc}\n"
-                "\t\t# ... your assets here ..."
-            )
-            raise TypeError(error_msg.strip())
 
-        cls.load = staticmethod(load_func)
-        cls.get_base_path = classmethod(lambda c: AssetPath(path or ""))
-        cls.paths = classmethod(
-            lambda c: {
-                member: cls.get_base_path().full_path(member.value) for member in cls
-            }
+class NoSuchComponent(Exception):
+    pass
+
+
+class Entity:
+    def __init__(self, id):
+        self.__id = id
+
+    def __hash__(self) -> int:
+        return hash(self.__id)
+
+    def __repr__(self) -> str:
+        return f"Entity: {self.__id.__repr__()}"
+
+    def __eq__(self, other_entity: Entity) -> bool:
+        return self.__id == other_entity.__id
+
+
+class InternalEntity:
+    def __init__(self, entity: Entity):
+        self.entity: Entity = entity
+        self.components: dict[Type, Any] = {}
+
+
+"""
+Naming Guide for if you really must shorten a variable in a comprehension or something:
+e = entity
+ie = internal_entity
+es = entities
+c = component
+cs = components
+"""
+
+
+class World:
+    def __init__(self) -> None:
+        self.next_entity_id: int = 0
+        self.entities: Dict[InternalEntity] = {}
+
+    def spawn(self, *components: Tuple[Any, ...]) -> Entity:
+        entity = Entity(self.next_entity_id)
+        self.next_entity_id += 1
+        internal_entity = InternalEntity(entity)
+        self.entities[entity] = internal_entity
+        for component in components:
+            internal_entity.components[type(component)] = component
+        return entity
+
+    def spawn_at(self, entity: Entity, *components: Tuple[Any, ...]) -> None:
+        internal_entity = InternalEntity(entity)
+        self.entities[entity] = internal_entity
+        for component in components:
+            internal_entity.components[type(component)] = component
+
+    def despawn(self, entity: Entity) -> Optional[Error.NoSuchEntity]:
+        if entity in self.entities:
+            del self.entities[entity]
+        else:
+            return Error.NoSuchEntity
+
+    def clear(self) -> None:
+        self.entities.clear()
+
+    def contains(self, entity: Entity) -> bool:
+        return entity in self.entities
+
+    def find(
+        self,
+        *component_types: Tuple[Type, ...],
+        has: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+        without: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+    ) -> Iterator[tuple]:
+        has = (
+            has
+            if isinstance(has, (list, tuple))
+            else [has] if has is not None else None
         )
-        return cls
+        without = (
+            without
+            if isinstance(without, (list, tuple))
+            else [without] if without is not None else None
+        )
 
-    return decorator
+        for internal_entity in self.entities.values():
+            if has and not all(c in internal_entity.components for c in has):
+                continue
+            if without and any(c in internal_entity.components for c in without):
+                continue
+            if all(c in internal_entity.components for c in component_types):
+                yield internal_entity.entity, tuple(
+                    internal_entity.components[c] for c in component_types
+                )
 
+    def find_on(
+        self,
+        entity: Entity,
+        *component_types: Tuple[Type, ...],
+        has: Optional[Type | List[Type] | Tuple[Type, ...]] = None,
+        without: Optional[Type | List[Type] | Tuple[Type, ...]] = None,
+    ) -> Optional[tuple]:
+        if entity not in self.entities:
+            return None
+        internal_entity = self.entities[entity]
 
-################    THE CACHE    ################
-class AssetCache:
-    def __init__(self):
-        self.cache = {}
+        if has:
+            if isinstance(has, (list, tuple)):
+                if not all(c in internal_entity.components for c in has):
+                    return None
+            else:
+                if has not in internal_entity.components:
+                    return None
 
-    def get(self, asset_enum):
-        if asset_enum in self.cache:
-            return self.cache[asset_enum]
+        if without:
+            if isinstance(without, (list, tuple)):
+                if any(c in internal_entity.components for c in without):
+                    return None
+            else:
+                if without in internal_entity.components:
+                    return None
 
-        # fetch loader
-        asset_type = type(asset_enum)
-        loader = asset_type.load
-        if loader is None:
-            raise TypeError(f"No load function defined for asset {asset_enum}")
+        if all(c in internal_entity.components for c in component_types):
+            return (
+                internal_entity.entity,
+                tuple(internal_entity.components[c] for c in component_types),
+            )
 
-        # construct full path and load asset
-        base_path = asset_type.get_base_path()
-        full_path = base_path.full_path(asset_enum.value)
-        if not os.path.exists(full_path):
-            raise ValueError(f"File not found: {full_path}")
-        self.cache[asset_enum] = loader(full_path)
-        return self.cache[asset_enum]
+        return None
 
-    def remove(self, asset_enum):
-        if asset_enum in self.cache:
-            del self.cache[asset_enum]
+    def get(self, entity: Entity, component_type: Type) -> Any | None:
+        if entity in self.entities:
+            if component_type in self.entities[entity].components:
+                return self.entities[entity].components[component_type]
+        return None
 
-    def preload(self, assets):
-        for asset in assets:
-            self.get(asset)
+    def satisfies(
+        self,
+        entity: Entity,
+        has: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+        without: Optional[Type | List[Type]] | Tuple[Type, ...] = None,
+    ) -> bool:
+        if entity not in self.entities:
+            return False
+        internal_entity = self.entities[entity]
 
-    def clear_cache(self):
-        self.cache.clear()
+        if has:
+            if isinstance(has, (list, tuple)):
+                if not all(c in internal_entity.components for c in has):
+                    return False
+            else:
+                if has not in internal_entity.components:
+                    return False
+
+        if without:
+            if isinstance(without, (list, tuple)):
+                if any(c in internal_entity.components for c in without):
+                    return False
+            else:
+                if without in internal_entity.components:
+                    return False
+
+        return True
+
+    def iter(self):
+        for entity in self.entities.keys():
+            yield entity
+
+    def insert(
+        self, entity: Entity, *components: Tuple[Any, ...]
+    ) -> None | Error.NoSuchEntity:
+        if entity in self.entities:
+            for component in components:
+                self.entities[entity].components[type(component)] = component
+        else:
+            return Error.NoSuchEntity
+
+    def remove(self, entity: Entity, *component_types: Tuple[Any, ...]) -> None:
+        if entity in self.entities:
+            internal_entity = self.entities[entity]
+            for component_type in component_types:
+                if component_type in internal_entity.components:
+                    del internal_entity.components[component_type]
+
+    def take(self, entity: Entity) -> tuple:
+        if entity in self.entities:
+            internal_entity = self.entities[entity]
+            components = tuple(internal_entity.components.values())
+            self.despawn(entity)
+            return components
+        return tuple()
+
+    def iter(self) -> Iterator[Entity]:
+        for internal_entity in self.entities:
+            yield internal_entity.entity
