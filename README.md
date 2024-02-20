@@ -97,6 +97,25 @@ class Velocity(vec2):
     pass
 ```
 
+You can put logic in your components, I'm not your dad. 
+
+```python
+
+class Shape:
+    def __init__(self, vertices):
+        self.vertices = vertices
+
+    def area(self):
+        return 0.5 * sum(
+            (self.vertices[i].x * self.vertices[i + 1].y - self.vertices[i + 1].x * self.vertices[i].y)
+            for i in range(len(self.vertices) - 1)
+        )
+
+```
+
+Unless your mom was at delta-hcon in 1998, in which case I might be your dad.
+
+
 ### 2. Make Your World, and Fill It With Entities
 
 Create a world and spawn some entities with components.
@@ -107,6 +126,7 @@ world = World() # initilizes a world object
 # Create an entity with some components
 entity = world.spawn(Position(0, 0), Velocity(1, 1), Health(100)) # add components at creation time
 world.add_component(entity, Burning()) # or add another component later
+entity.despawn(entity) # remove the entity
 ```
 
 world.spawn is variadic, so you can add as many components as you want, or just one, or none at all.
@@ -115,7 +135,15 @@ world.spawn is variadic, so you can add as many components as you want, or just 
 world = World()
 world.spawn(Position(0, 0), Velocity(1, 1), Health(100)) # valid
 world.spawn(Position(1, 1)) # also valid
-world.spawn()   # also valid
+world.spawn()   # useful sometimes
+
+```
+
+A lot of the methods in phecs are variadic.
+
+```python
+world.remove(entity, Health) # remove a component
+world.remove(entity, Health, Burning) # remove multiple components
 ```
 
 ### 3. Define Systems
@@ -148,6 +176,7 @@ def do_nothing_expensively(world):   # a very useful system
 
 Run the systems in your game loop.
 
+
 ```python
 while True:
     physics(world)
@@ -155,7 +184,7 @@ while True:
     die_if_dead(world)
 draw(graphics_context, world)
 ```
-
+Or just once, or whatever.
 
 ## Handy Features
 
