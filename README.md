@@ -126,7 +126,7 @@ world = World() # initilizes a world object
 # Create an entity with some components
 entity = world.spawn(Position(0, 0), Velocity(1, 1), Health(100)) # add components at creation time
 world.add_component(entity, Burning()) # or add another component later
-entity.despawn(entity) # remove the entity
+world.despawn(entity) # remove the entity
 ```
 
 world.spawn is variadic, so you can add as many components as you want, or just one, or none at all.
