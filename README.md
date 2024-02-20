@@ -113,7 +113,7 @@ class Shape:
 
 ```
 
-Unless your mom was at delta-hcon in 1998, in which case I might be your dad.
+Unless your mom was at $CONVENTION_NAME in 1998, in which case I might be your dad.
 
 
 ### 2. Make Your World, and Fill It With Entities
