@@ -82,46 +82,66 @@ class Dead:
     pass
 ```
 
+Components can be any class, and can have any attributes or methods.
+Compatable with dataclasses, and inheritance.
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class Position:
+    x: float
+    y: float
+
+class Velocity(vec2):
+    pass
+```
+
 ### 2. Make Your World, and Fill It With Entities
 
 Create a world and spawn some entities with components.
 
 ```python
-# Create a world
-world = World()
+world = World() # initilizes a world object
 
 # Create an entity with some components
-entity = world.spawn(Position(0, 0), Velocity(1, 1), Health(100))
-world.add_component(entity, Burning()) # add another component later
+entity = world.spawn(Position(0, 0), Velocity(1, 1), Health(100)) # add components at creation time
+world.add_component(entity, Burning()) # or add another component later
 ```
 
 world.spawn is variadic, so you can add as many components as you want, or just one, or none at all.
 
 ```python
 world = World()
-world.spawn(Position(0, 0), Velocity(1, 1), Health(100))
-world.spawn(Position(1, 1))
-world.spawn()
+world.spawn(Position(0, 0), Velocity(1, 1), Health(100)) # valid
+world.spawn(Position(1, 1)) # also valid
+world.spawn()   # also valid
 ```
 
 ### 3. Define Systems
 
 Define some systems. In Phecs, a system is any function that operates on the world.
+The main tool for iterating over entities is the `find` method.
+Only entities with all the specified components will be iterated over.
 
 ```python
-def physics(world):
+def physics(world): # this is a system
     for entity, position, velocity in world.find(Position, Velocity):
         position.x += velocity.dx
         position.y += velocity.dy
 
-def burn(world):
+def burn(world): # also a system
     for entity, health, burning in world.find(Health, Burning):
         health.hp -= 1
 
-def die_if_dead(world):
+def die_if_dead(world): # typical rpg system
     for entity, health in world.find(Health):
         if health.hp <= 0:
             world.insert(entity, Dead())
+
+def do_nothing_expensively(world):   # a very useful system
+    for entity in world.entities():
+        pass
 ```
 
 ### 4. Run Systems
@@ -145,19 +165,24 @@ In a find query entities can be filtered by components.
 
 ```python
 for entity, position, velocity in world.find(Position, Velocity, without=Dead):
-    pass
+    pass    # only entities without a dead component
 
 for entity, position, velocity in world.find(Position, Velocity, has=Health):
-    pass
+    pass    # only entities with a health component
+
+
 ```
 
 Get complicated with it.
 
 ```python
 for entity, position, velocity in world.find(Position, Velocity, has=(Player, Burning), without=Dead):
+    pass    
+
+for entity, position, health in world.find(Position, Health, has=(Burning, Desire), without=(Mercy, Fear)):
     pass
 ```
 
 ## See Also
-Documentation at: www.link_to_documentation.com
+Documentation at: www.eventually_a_link_to_documentation.com
 ```
